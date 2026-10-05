@@ -32,6 +32,8 @@ enum AppThemePreference {
 }
 
 class AppThemeController extends ChangeNotifier {
+  AppThemeController();
+
   static const _prefKey = 'app_theme_preference';
 
   AppThemePreference _preference = AppThemePreference.system;

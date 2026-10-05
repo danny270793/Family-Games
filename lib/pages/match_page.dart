@@ -1,25 +1,46 @@
-import 'package:family_games/data/games_repository.dart';
 import 'package:family_games/l10n/app_localizations.dart';
-import 'package:family_games/logic/standings.dart';
-import 'package:family_games/models/family_game.dart';
-import 'package:family_games/theme/family_theme.dart';
-import 'package:family_games/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-class MatchPage extends StatefulWidget {
+import '../core/di/injection.dart';
+import '../core/theme/family_theme.dart';
+import '../features/games/domain/entities/family_game.dart';
+import '../features/games/domain/entities/score_draft.dart';
+import '../features/games/domain/entities/standings.dart';
+import '../features/games/presentation/cubit/game_cubit.dart';
+import '../widgets/app_sheet.dart';
+
+class MatchPage extends StatelessWidget {
   const MatchPage({super.key, required this.gameId, this.matchId});
 
   final String gameId;
   final String? matchId;
 
   @override
-  State<MatchPage> createState() => _MatchPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<GameCubit>(),
+      child: _MatchView(gameId: gameId, matchId: matchId),
+    );
+  }
 }
 
-class _MatchPageState extends State<MatchPage> {
+class _MatchView extends StatefulWidget {
+  const _MatchView({required this.gameId, this.matchId});
+
+  final String gameId;
+  final String? matchId;
+
+  @override
+  State<_MatchView> createState() => _MatchViewState();
+}
+
+class _MatchViewState extends State<_MatchView> {
+  GameCubit get _cubit => context.read<GameCubit>();
+
   FamilyGame? _game;
   GameMatch? _match;
   DateTime _playedAt = DateTime.now();
@@ -35,39 +56,39 @@ class _MatchPageState extends State<MatchPage> {
   }
 
   Future<void> _load() async {
-    try {
-      final game = await gamesRepository.getGame(widget.gameId);
-      GameMatch? match;
-      if (widget.matchId != null) {
-        for (final row in game.matches) {
-          if (row.id == widget.matchId) {
-            match = row;
-            break;
-          }
-        }
-      }
-      final drafts = [
-        for (final member in game.members)
-          _Draft.fromMember(member, match, game.type),
-      ];
-      if (!mounted) return;
-      setState(() {
-        _game = game;
-        _match = match;
-        _playedAt = match?.playedAt ?? DateTime.now();
-        _drafts
-          ..clear()
-          ..addAll(drafts);
-        _loading = false;
-        _error = match == null && widget.matchId != null ? 'missing' : null;
-      });
-    } catch (_) {
-      if (!mounted) return;
+    await _cubit.load(widget.gameId);
+    if (!mounted) return;
+    final game = _cubit.game;
+    if (game == null) {
       setState(() {
         _loading = false;
         _error = 'load';
       });
+      return;
     }
+    GameMatch? match;
+    if (widget.matchId != null) {
+      for (final row in game.matches) {
+        if (row.id == widget.matchId) {
+          match = row;
+          break;
+        }
+      }
+    }
+    final drafts = [
+      for (final member in game.members)
+        _Draft.fromMember(member, match, game.type),
+    ];
+    setState(() {
+      _game = game;
+      _match = match;
+      _playedAt = match?.playedAt ?? DateTime.now();
+      _drafts
+        ..clear()
+        ..addAll(drafts);
+      _loading = false;
+      _error = match == null && widget.matchId != null ? 'missing' : null;
+    });
   }
 
   @override
@@ -121,37 +142,33 @@ class _MatchPageState extends State<MatchPage> {
       }
     }
     setState(() => _saving = true);
-    try {
-      await gamesRepository.saveMatch(
-        gameId: game.id,
-        matchId: _match?.id,
-        playedAt: _playedAt,
-        scores: [
-          for (final draft in selected)
-            game.type == GameType.sevenWonders
-                ? ScoreDraft(
-                    userId: draft.userId,
-                    points: _total(draft),
-                    maravilla: draft.value(WonderCategory.maravilla),
-                    monedas: draft.value(WonderCategory.monedas),
-                    rojo: draft.value(WonderCategory.rojo),
-                    azul: draft.value(WonderCategory.azul),
-                    amarillo: draft.value(WonderCategory.amarillo),
-                    verde: draft.value(WonderCategory.verde),
-                    morado: draft.value(WonderCategory.morado),
-                  )
-                : ScoreDraft(userId: draft.userId, points: draft.pointsValue()),
-        ],
-      );
-      if (mounted) context.pop(true);
-    } on GamesException catch (error) {
-      if (!mounted) return;
+    final error = await _cubit.saveMatch(
+      gameId: game.id,
+      matchId: _match?.id,
+      playedAt: _playedAt,
+      scores: [
+        for (final draft in selected)
+          game.type == GameType.sevenWonders
+              ? ScoreDraft(
+                  userId: draft.userId,
+                  points: _total(draft),
+                  maravilla: draft.value(WonderCategory.maravilla),
+                  monedas: draft.value(WonderCategory.monedas),
+                  rojo: draft.value(WonderCategory.rojo),
+                  azul: draft.value(WonderCategory.azul),
+                  amarillo: draft.value(WonderCategory.amarillo),
+                  verde: draft.value(WonderCategory.verde),
+                  morado: draft.value(WonderCategory.morado),
+                )
+              : ScoreDraft(userId: draft.userId, points: draft.pointsValue()),
+      ],
+    );
+    if (!mounted) return;
+    if (error == null) {
+      context.pop(true);
+    } else {
       setState(() => _saving = false);
-      _snack(gamesErrorMessage(l10n, error.code));
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      _snack(l10n.unexpectedError);
+      _snack(gamesErrorMessage(l10n, error));
     }
   }
 
@@ -167,16 +184,18 @@ class _MatchPageState extends State<MatchPage> {
       cancelLabel: l10n.cancel,
     );
     if (ok != true || !mounted) return;
-    try {
-      await gamesRepository.deleteMatch(match.id);
-      if (mounted) context.pop(true);
-    } catch (_) {
+    final error = await _cubit.deleteMatch(match.id);
+    if (!mounted) return;
+    if (error == null) {
+      context.pop(true);
+    } else {
       _snack(l10n.unexpectedError);
     }
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -195,7 +214,11 @@ class _MatchPageState extends State<MatchPage> {
     final selected = _drafts.where((draft) => draft.selected).toList();
     final lines = [
       for (final draft in selected)
-        ScoreLine(userId: draft.userId, email: draft.email, points: _total(draft)),
+        ScoreLine(
+          userId: draft.userId,
+          email: draft.email,
+          points: _total(draft),
+        ),
     ];
     final results = scoreResults(lines);
     final dateLabel = DateFormat.yMMMd(
@@ -240,7 +263,9 @@ class _MatchPageState extends State<MatchPage> {
                 draft: draft,
                 type: game.type,
                 total: _total(draft),
-                won: results.any((row) => row.userId == draft.userId && row.won),
+                won: results.any(
+                  (row) => row.userId == draft.userId && row.won,
+                ),
                 enabled: !_saving,
                 onChanged: () => setState(() {}),
               ),
@@ -251,14 +276,14 @@ class _MatchPageState extends State<MatchPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.save),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.save),
             ),
           ),
         ],
@@ -287,7 +312,10 @@ class _LeaderBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.emoji_events_rounded, color: theme.colorScheme.onPrimaryContainer),
+          Icon(
+            Icons.emoji_events_rounded,
+            color: theme.colorScheme.onPrimaryContainer,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -300,7 +328,12 @@ class _LeaderBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  winners.map((row) => '${row.email.split('@').first} · ${row.points}').join(', '),
+                  winners
+                      .map(
+                        (row) =>
+                            '${row.email.split('@').first} · ${row.points}',
+                      )
+                      .join(', '),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w700,
@@ -363,12 +396,18 @@ class _PlayerScoreCard extends StatelessWidget {
                 if (draft.selected && won)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: Icon(Icons.emoji_events_rounded, color: theme.colorScheme.primary, size: 18),
+                    child: Icon(
+                      Icons.emoji_events_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 18,
+                    ),
                   ),
                 if (draft.selected)
                   Text(
                     '$total',
-                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
               ],
             ),
@@ -377,8 +416,12 @@ class _PlayerScoreCard extends StatelessWidget {
                 controller: draft.points,
                 enabled: enabled,
                 onTap: () => _selectAll(draft.points),
-                keyboardType: const TextInputType.numberWithOptions(signed: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'))],
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
+                ],
                 decoration: InputDecoration(labelText: l10n.points),
                 onChanged: (_) => onChanged(),
               ),
@@ -389,8 +432,12 @@ class _PlayerScoreCard extends StatelessWidget {
                   controller: draft.categories[category],
                   enabled: enabled,
                   onTap: () => _selectAll(draft.categories[category]!),
-                  keyboardType: const TextInputType.numberWithOptions(signed: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'))],
+                  keyboardType: const TextInputType.numberWithOptions(
+                    signed: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
+                  ],
                   decoration: InputDecoration(
                     labelText: wonderCategoryLabel(l10n, category),
                     prefixIcon: Icon(
@@ -418,15 +465,12 @@ void _selectAll(TextEditingController controller) {
 }
 
 class _Draft {
-  _Draft({
-    required this.userId,
-    required this.email,
-    required this.selected,
-  }) : points = TextEditingController(text: '0'),
-       categories = {
-         for (final category in WonderCategory.values)
-           category: TextEditingController(text: '0'),
-       };
+  _Draft({required this.userId, required this.email, required this.selected})
+    : points = TextEditingController(text: '0'),
+      categories = {
+        for (final category in WonderCategory.values)
+          category: TextEditingController(text: '0'),
+      };
 
   final String userId;
   final String email;
@@ -434,7 +478,11 @@ class _Draft {
   final TextEditingController points;
   final Map<WonderCategory, TextEditingController> categories;
 
-  factory _Draft.fromMember(GameMember member, GameMatch? match, GameType type) {
+  factory _Draft.fromMember(
+    GameMember member,
+    GameMatch? match,
+    GameType type,
+  ) {
     MatchScore? score;
     if (match != null) {
       for (final row in match.scores) {
@@ -458,7 +506,9 @@ class _Draft {
           score.points != 0) {
         draft.categories[WonderCategory.maravilla]!.text = '${score.points}';
       } else if (type == GameType.sevenWonders) {
-        draft.categories[WonderCategory.maravilla]!.text = _text(score.maravilla);
+        draft.categories[WonderCategory.maravilla]!.text = _text(
+          score.maravilla,
+        );
         draft.categories[WonderCategory.monedas]!.text = _text(score.monedas);
         draft.categories[WonderCategory.rojo]!.text = _text(score.rojo);
         draft.categories[WonderCategory.azul]!.text = _text(score.azul);
@@ -480,7 +530,9 @@ class _Draft {
 
   bool isValid(GameType type) {
     if (type == GameType.other) return _ok(points.text);
-    return WonderCategory.values.every((category) => _ok(categories[category]!.text));
+    return WonderCategory.values.every(
+      (category) => _ok(categories[category]!.text),
+    );
   }
 
   bool _ok(String raw) {

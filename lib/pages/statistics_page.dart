@@ -1,7 +1,8 @@
-import 'package:family_games/core/auth/auth_repository.dart';
+import 'package:family_games/core/di/injection.dart';
+import 'package:family_games/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:family_games/l10n/app_localizations.dart';
-import 'package:family_games/logic/standings.dart';
-import 'package:family_games/models/family_game.dart';
+import 'package:family_games/features/games/domain/entities/family_game.dart';
+import 'package:family_games/features/games/domain/entities/standings.dart';
 import 'package:family_games/widgets/win_trend_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -110,11 +111,12 @@ class _GameStatisticsSectionState extends State<GameStatisticsSection> {
       for (final member in game.members)
         ScoreLine(userId: member.userId, email: member.email, points: 0),
     ];
-    final chronological = [...matches]..sort((a, b) {
-      final byDate = a.playedAt.compareTo(b.playedAt);
-      if (byDate != 0) return byDate;
-      return a.id.compareTo(b.id);
-    });
+    final chronological = [...matches]
+      ..sort((a, b) {
+        final byDate = a.playedAt.compareTo(b.playedAt);
+        if (byDate != 0) return byDate;
+        return a.id.compareTo(b.id);
+      });
     final dated = [
       for (final match in chronological)
         DatedMatch(
@@ -140,7 +142,9 @@ class _GameStatisticsSectionState extends State<GameStatisticsSection> {
         children: [
           Text(
             l10n.statistics,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -181,7 +185,9 @@ class _GameStatisticsSectionState extends State<GameStatisticsSection> {
             else ...[
               Text(
                 l10n.winsOverTime,
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               WinTrendChart(
@@ -205,7 +211,9 @@ class _GameStatisticsSectionState extends State<GameStatisticsSection> {
               const SizedBox(height: 16),
               Text(
                 l10n.records,
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               _RecordGrid(
@@ -267,7 +275,9 @@ class _GameStatisticsSectionState extends State<GameStatisticsSection> {
               const SizedBox(height: 16),
               Text(
                 l10n.standings,
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               for (var i = 0; i < standings.length; i++)
@@ -346,7 +356,7 @@ class _StandingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final mine = standing.userId == authRepository.currentUser?.id;
+    final mine = standing.userId == getIt<GetCurrentUserUsecase>()()?.id;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Card(
@@ -464,7 +474,10 @@ class _RecordGrid extends StatelessWidget {
           runSpacing: 8,
           children: [
             for (final item in items)
-              SizedBox(width: width, child: _RecordCard(record: item)),
+              SizedBox(
+                width: width,
+                child: _RecordCard(record: item),
+              ),
           ],
         );
       },
@@ -480,7 +493,9 @@ class _RecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final names = record.names.map((email) => email.split('@').first).join(', ');
+    final names = record.names
+        .map((email) => email.split('@').first)
+        .join(', ');
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

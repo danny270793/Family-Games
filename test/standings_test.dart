@@ -1,4 +1,4 @@
-import 'package:family_games/logic/standings.dart';
+import 'package:family_games/features/games/domain/entities/standings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

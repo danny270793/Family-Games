@@ -10,7 +10,7 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get appTitle => 'Family\'s Game';
+  String get appTitle => 'Family Games';
 
   @override
   String get signIn => 'Iniciar sesión';
@@ -156,6 +156,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsAboutSection => 'Acerca de';
 
   @override
+  String get settingsRateApp => 'Calificar en Google Play';
+
+  @override
   String get settingsAboutApp => 'Acerca de';
 
   @override
@@ -203,14 +206,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsTermsAcceptanceBody =>
-      'Al acceder o usar Family\'s Game aceptas estos términos. Si no estás de acuerdo, no uses la app. El inicio de sesión lo gestiona Supabase.';
+      'Al acceder o usar Family Games aceptas estos términos. Si no estás de acuerdo, no uses la app. El inicio de sesión lo gestiona Supabase.';
 
   @override
   String get settingsTermsDisclaimerTitle => 'No es asesoramiento profesional';
 
   @override
   String get settingsTermsDisclaimerBody =>
-      'Family\'s Game es una app personal. Nada en la app ni en estos términos constituye asesoramiento legal. Usas la app bajo tu propio riesgo.';
+      'Family Games es una app personal. Nada en la app ni en estos términos constituye asesoramiento legal. Usas la app bajo tu propio riesgo.';
 
   @override
   String get settingsTermsLiabilityTitle => 'Limitación de responsabilidad';
@@ -334,11 +337,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get playerHelp =>
-      'Usa el correo con el que inicia sesión en Family\'s Game.';
+      'Usa el correo con el que inicia sesión en Family Games.';
 
   @override
-  String get playerNotFound =>
-      'Ninguna cuenta de Family\'s Game usa ese correo.';
+  String get playerNotFound => 'Ninguna cuenta de Family Games usa ese correo.';
 
   @override
   String get playerAlreadyAdded => 'Ese jugador ya está en este juego.';

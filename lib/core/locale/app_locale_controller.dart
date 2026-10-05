@@ -24,7 +24,7 @@ enum AppLanguagePreference {
     AppLanguagePreference.es => 'es',
   };
 
-  /// `null` means use the device locale.
+  /// `null` means use the device locale (resolved via [localeResolutionCallback]).
   Locale? get materialLocale => switch (this) {
     AppLanguagePreference.system => null,
     AppLanguagePreference.en => const Locale('en'),
@@ -33,6 +33,8 @@ enum AppLanguagePreference {
 }
 
 class AppLocaleController extends ChangeNotifier {
+  AppLocaleController();
+
   static const _prefKey = 'app_language_preference';
 
   AppLanguagePreference _preference = AppLanguagePreference.system;

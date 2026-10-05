@@ -1,4 +1,4 @@
-import 'package:family_games/logic/standings.dart';
+import 'package:family_games/features/games/domain/entities/standings.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
@@ -74,10 +74,16 @@ class _WinTrendChartState extends State<WinTrendChart> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return GestureDetector(
-                onTapDown: (details) =>
-                    _select(details.localPosition.dx, constraints.maxWidth, count),
-                onHorizontalDragUpdate: (details) =>
-                    _select(details.localPosition.dx, constraints.maxWidth, count),
+                onTapDown: (details) => _select(
+                  details.localPosition.dx,
+                  constraints.maxWidth,
+                  count,
+                ),
+                onHorizontalDragUpdate: (details) => _select(
+                  details.localPosition.dx,
+                  constraints.maxWidth,
+                  count,
+                ),
                 child: CustomPaint(
                   painter: _WinTrendPainter(
                     series: series,
@@ -86,8 +92,12 @@ class _WinTrendChartState extends State<WinTrendChart> {
                     labelStyle: theme.textTheme.labelSmall!.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    gridColor: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
-                    guideColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    gridColor: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.7,
+                    ),
+                    guideColor: theme.colorScheme.primary.withValues(
+                      alpha: 0.35,
+                    ),
                   ),
                   child: const SizedBox.expand(),
                 ),
@@ -96,10 +106,7 @@ class _WinTrendChartState extends State<WinTrendChart> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          dateLabel,
-          style: theme.textTheme.labelLarge,
-        ),
+        Text(dateLabel, style: theme.textTheme.labelLarge),
         Text(
           caption,
           style: theme.textTheme.bodySmall?.copyWith(
@@ -144,7 +151,12 @@ class _WinTrendPainter extends CustomPainter {
     const right = 8.0;
     const top = 8.0;
     const bottom = 4.0;
-    final plot = Rect.fromLTRB(left, top, size.width - right, size.height - bottom);
+    final plot = Rect.fromLTRB(
+      left,
+      top,
+      size.width - right,
+      size.height - bottom,
+    );
     final count = series.first.samples.length;
     var maxWins = 1;
     for (final row in series) {
@@ -157,7 +169,9 @@ class _WinTrendPainter extends CustomPainter {
       ..color = gridColor
       ..strokeWidth = 1;
     for (var tick = 0; tick <= maxWins; tick++) {
-      if (maxWins > 6 && tick % ((maxWins / 4).ceil()) != 0 && tick != maxWins) {
+      if (maxWins > 6 &&
+          tick % ((maxWins / 4).ceil()) != 0 &&
+          tick != maxWins) {
         continue;
       }
       final y = plot.bottom - (tick / maxWins) * plot.height;
@@ -178,7 +192,11 @@ class _WinTrendPainter extends CustomPainter {
       ..color = guideColor
       ..strokeWidth = 1.5;
     final guideX = xAt(selected);
-    canvas.drawLine(Offset(guideX, plot.top), Offset(guideX, plot.bottom), guide);
+    canvas.drawLine(
+      Offset(guideX, plot.top),
+      Offset(guideX, plot.bottom),
+      guide,
+    );
 
     for (var i = 0; i < series.length; i++) {
       final color = colors[i % colors.length];
@@ -207,7 +225,8 @@ class _WinTrendPainter extends CustomPainter {
         canvas.drawCircle(
           Offset(
             xAt(index),
-            plot.bottom - (samples[index].cumulativeWins / maxWins) * plot.height,
+            plot.bottom -
+                (samples[index].cumulativeWins / maxWins) * plot.height,
           ),
           index == selected ? 4.5 : 3,
           dot,
