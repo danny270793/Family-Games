@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Family\'s Game'**
+  /// **'Family Games'**
   String get appTitle;
 
   /// No description provided for @signIn.
@@ -374,6 +374,12 @@ abstract class AppLocalizations {
   /// **'About'**
   String get settingsAboutSection;
 
+  /// No description provided for @settingsRateApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate on Google Play'**
+  String get settingsRateApp;
+
   /// No description provided for @settingsAboutApp.
   ///
   /// In en, this message translates to:
@@ -461,7 +467,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTermsAcceptanceBody.
   ///
   /// In en, this message translates to:
-  /// **'By accessing or using Family\'s Game, you agree to these terms. If you do not agree, do not use the app. Sign-in is handled by Supabase.'**
+  /// **'By accessing or using Family Games, you agree to these terms. If you do not agree, do not use the app. Sign-in is handled by Supabase.'**
   String get settingsTermsAcceptanceBody;
 
   /// No description provided for @settingsTermsDisclaimerTitle.
@@ -473,7 +479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTermsDisclaimerBody.
   ///
   /// In en, this message translates to:
-  /// **'Family\'s Game is a personal app. Nothing in the app or these terms is legal advice. You use the app at your own risk.'**
+  /// **'Family Games is a personal app. Nothing in the app or these terms is legal advice. You use the app at your own risk.'**
   String get settingsTermsDisclaimerBody;
 
   /// No description provided for @settingsTermsLiabilityTitle.
@@ -701,13 +707,13 @@ abstract class AppLocalizations {
   /// No description provided for @playerHelp.
   ///
   /// In en, this message translates to:
-  /// **'Use the email they use to sign in to Family\'s Game.'**
+  /// **'Use the email they use to sign in to Family Games.'**
   String get playerHelp;
 
   /// No description provided for @playerNotFound.
   ///
   /// In en, this message translates to:
-  /// **'No Family\'s Game account uses that email.'**
+  /// **'No Family Games account uses that email.'**
   String get playerNotFound;
 
   /// No description provided for @playerAlreadyAdded.

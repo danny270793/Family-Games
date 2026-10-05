@@ -1,44 +1,45 @@
-import 'package:family_games/data/games_repository.dart';
 import 'package:family_games/l10n/app_localizations.dart';
-import 'package:family_games/models/family_game.dart';
-import 'package:family_games/pages/game_form_sheet.dart';
-import 'package:family_games/theme/family_theme.dart';
-import 'package:family_games/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-class GameSettingsPage extends StatefulWidget {
+import '../core/di/injection.dart';
+import '../core/theme/family_theme.dart';
+import '../features/games/domain/entities/family_game.dart';
+import '../features/games/domain/entities/games_exception.dart';
+import '../features/games/domain/usecases/add_member_usecase.dart';
+import '../features/games/presentation/cubit/game_cubit.dart';
+import '../features/games/presentation/cubit/game_state.dart';
+import '../widgets/app_sheet.dart';
+import '../widgets/game_form_sheet.dart';
+
+class GameSettingsPage extends StatelessWidget {
   const GameSettingsPage({super.key, required this.gameId});
 
   final String gameId;
 
   @override
-  State<GameSettingsPage> createState() => _GameSettingsPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<GameCubit>()..load(gameId),
+      child: _GameSettingsView(gameId: gameId),
+    );
+  }
 }
 
-class _GameSettingsPageState extends State<GameSettingsPage> {
-  FamilyGame? _game;
-  bool _loading = true;
+class _GameSettingsView extends StatefulWidget {
+  const _GameSettingsView({required this.gameId});
+
+  final String gameId;
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  State<_GameSettingsView> createState() => _GameSettingsViewState();
+}
 
-  Future<void> _load() async {
-    try {
-      final game = await gamesRepository.getGame(widget.gameId);
-      if (!mounted) return;
-      setState(() {
-        _game = game;
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-    }
-  }
+class _GameSettingsViewState extends State<_GameSettingsView> {
+  GameCubit get _cubit => context.read<GameCubit>();
+
+  Future<void> _load() => _cubit.load(widget.gameId);
 
   Future<void> _edit(FamilyGame game) async {
     final result = await showGameFormSheet(context, game: game);
@@ -55,13 +56,12 @@ class _GameSettingsPageState extends State<GameSettingsPage> {
       cancelLabel: l10n.cancel,
     );
     if (ok != true || !mounted) return;
-    try {
-      await gamesRepository.deleteGame(game.id);
-      if (mounted) context.go('/home');
-    } on GamesException catch (error) {
-      _snack(gamesErrorMessage(l10n, error.code));
-    } catch (_) {
-      _snack(l10n.unexpectedError);
+    final error = await _cubit.deleteGame(game.id);
+    if (!mounted) return;
+    if (error == null) {
+      context.go('/home');
+    } else {
+      _snack(gamesErrorMessage(l10n, error));
     }
   }
 
@@ -83,27 +83,27 @@ class _GameSettingsPageState extends State<GameSettingsPage> {
       cancelLabel: l10n.cancel,
     );
     if (ok != true || !mounted) return;
-    try {
-      await gamesRepository.removeMember(member.id);
-      await _load();
-    } on GamesException catch (error) {
-      _snack(gamesErrorMessage(l10n, error.code));
-    } catch (_) {
-      _snack(l10n.unexpectedError);
-    }
+    final error = await _cubit.removeMember(
+      gameId: widget.gameId,
+      memberId: member.id,
+    );
+    if (error != null && mounted) _snack(gamesErrorMessage(l10n, error));
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final game = _game;
+    final cubit = context.watch<GameCubit>();
+    final game = cubit.game;
+    final loading = cubit.state is GameLoading || cubit.state is GameInitial;
     final theme = Theme.of(context);
     return Scaffold(
-      body: _loading && game == null
+      body: loading && game == null
           ? const Center(child: CircularProgressIndicator())
           : game == null
           ? Center(child: Text(l10n.unexpectedError))
@@ -116,7 +116,10 @@ class _GameSettingsPageState extends State<GameSettingsPage> {
                     delegate: SliverChildListDelegate([
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(game.name, style: theme.textTheme.titleLarge),
+                        child: Text(
+                          game.name,
+                          style: theme.textTheme.titleLarge,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Padding(
@@ -156,14 +159,21 @@ class _GameSettingsPageState extends State<GameSettingsPage> {
                         ),
                       const SizedBox(height: 24),
                       ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                        ),
                         leading: const Icon(Icons.edit_outlined),
                         title: Text(l10n.editGame),
                         onTap: () => _edit(game),
                       ),
                       ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                        leading: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.error),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                        ),
+                        leading: Icon(
+                          Icons.delete_outline_rounded,
+                          color: theme.colorScheme.error,
+                        ),
                         title: Text(
                           l10n.deleteGame,
                           style: TextStyle(color: theme.colorScheme.error),
@@ -233,7 +243,7 @@ class _AddPlayerSheetState extends State<_AddPlayerSheet> {
       _error = null;
     });
     try {
-      await gamesRepository.addMember(gameId: widget.gameId, email: email);
+      await getIt<AddMemberUsecase>()(gameId: widget.gameId, email: email);
       if (mounted) Navigator.pop(context, true);
     } on GamesException catch (error) {
       if (!mounted) return;

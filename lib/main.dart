@@ -1,22 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:family_games/core/app_controllers.dart';
-import 'package:family_games/core/auth/auth_refresh.dart';
-import 'package:family_games/core/auth/auth_repository.dart';
-import 'package:family_games/core/locale/app_locale_controller.dart';
-import 'package:family_games/core/security/app_biometric_unlock_controller.dart';
-import 'package:family_games/core/theme/app_theme_controller.dart';
 import 'package:family_games/l10n/app_localizations.dart';
-import 'package:family_games/router.dart';
-import 'package:family_games/theme/family_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'core/di/injection.dart';
+import 'core/locale/app_locale_controller.dart';
+import 'core/logger/app_logger.dart';
+import 'core/security/app_biometric_unlock_controller.dart';
+import 'core/theme/app_theme_controller.dart';
+import 'core/theme/family_theme.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'router.dart';
 
 // Dart's HttpClient (used by Supabase) has its own trust store, independent
 // of the Android/iOS OS trust store. Debug-only: trust the corporate proxy
@@ -28,8 +27,9 @@ Future<void> _trustDevProxyCertificateIfNeeded() async {
     SecurityContext.defaultContext.setTrustedCertificatesBytes(
       bytes.buffer.asUint8List(),
     );
+    AppLogger.info('trusted dev proxy certificate');
   } catch (e) {
-    debugPrint('no dev proxy certificate to trust: $e');
+    AppLogger.info('no dev proxy certificate to trust: $e');
   }
 }
 
@@ -46,36 +46,21 @@ Future<void> main() async {
     );
   }
 
+  AppLogger.info('initializing Supabase');
   await Supabase.initialize(url: url, publishableKey: anonKey);
+  AppLogger.info('Supabase initialized');
 
-  final locale = AppLocaleController();
-  final theme = AppThemeController();
-  final biometric = AppBiometricUnlockController();
-  await Future.wait([locale.load(), theme.load(), biometric.load()]);
+  setupDi();
+  AppLogger.info('DI setup complete');
+  await getIt<AppLocaleController>().load();
+  await getIt<AppThemeController>().load();
+  await getIt<AppBiometricUnlockController>().load();
 
-  runApp(
-    FamilyGamesApp(
-      locale: locale,
-      theme: theme,
-      biometric: biometric,
-      authRefresh: AuthRefresh(),
-    ),
-  );
+  runApp(const App());
 }
 
-class FamilyGamesApp extends StatefulWidget {
-  const FamilyGamesApp({
-    super.key,
-    required this.locale,
-    required this.theme,
-    required this.biometric,
-    required this.authRefresh,
-  });
-
-  final AppLocaleController locale;
-  final AppThemeController theme;
-  final AppBiometricUnlockController biometric;
-  final AuthRefresh authRefresh;
+class App extends StatefulWidget {
+  const App({super.key});
 
   static Locale _resolveDeviceLocale(
     Locale? deviceLocale,
@@ -89,27 +74,25 @@ class FamilyGamesApp extends StatefulWidget {
   }
 
   @override
-  State<FamilyGamesApp> createState() => _FamilyGamesAppState();
+  State<App> createState() => _AppState();
 }
 
-class _FamilyGamesAppState extends State<FamilyGamesApp>
-    with WidgetsBindingObserver {
-  late final GoRouter _router;
+class _AppState extends State<App> with WidgetsBindingObserver {
+  /// True after [AppLifecycleState.paused]; cleared on resume so cold start does not lock.
   bool _shouldUnlockOnNextResume = false;
+
+  /// Full-screen gate: no router navigation visible until cleared.
   bool _biometricLockActive = false;
 
   @override
   void initState() {
     super.initState();
-    _router = createRouter(widget.authRefresh);
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _router.dispose();
-    widget.authRefresh.dispose();
     super.dispose();
   }
 
@@ -117,64 +100,57 @@ class _FamilyGamesAppState extends State<FamilyGamesApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _shouldUnlockOnNextResume = true;
-    } else if (state == AppLifecycleState.resumed && _shouldUnlockOnNextResume) {
+    } else if (state == AppLifecycleState.resumed &&
+        _shouldUnlockOnNextResume) {
       _shouldUnlockOnNextResume = false;
       unawaited(_activateBiometricLockIfNeeded());
     }
   }
 
   Future<void> _activateBiometricLockIfNeeded() async {
-    if (authRepository.currentSession == null) return;
-    final bio = widget.biometric;
+    if (!getIt<AuthRepository>().hasSession) return;
+    final bio = getIt<AppBiometricUnlockController>();
     await bio.refreshAuthenticatorAvailability();
     if (!bio.enabled || !bio.authenticatorAvailable) return;
     if (!mounted) return;
     setState(() => _biometricLockActive = true);
   }
 
+  void _clearBiometricLock() {
+    if (_biometricLockActive) {
+      setState(() => _biometricLockActive = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AppControllers(
-      locale: widget.locale,
-      theme: widget.theme,
-      biometric: widget.biometric,
-      child: ListenableBuilder(
-        listenable: Listenable.merge([widget.locale, widget.theme]),
-        builder: (context, _) {
-          return MaterialApp.router(
-            onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: widget.locale.materialAppLocale,
-            localeResolutionCallback: (locale, supported) =>
-                FamilyGamesApp._resolveDeviceLocale(locale, supported),
-            theme: familyLightTheme(),
-            darkTheme: familyDarkTheme(),
-            themeMode: widget.theme.themeMode,
-            routerConfig: _router,
-            builder: (context, child) {
-              if (_biometricLockActive) {
-                return PopScope(
-                  canPop: false,
-                  child: _BiometricLockScreen(
-                    onUnlocked: () {
-                      if (_biometricLockActive) {
-                        setState(() => _biometricLockActive = false);
-                      }
-                    },
-                  ),
-                );
-              }
-              return child ?? const SizedBox.shrink();
-            },
-          );
-        },
-      ),
+    final appLocale = getIt<AppLocaleController>();
+    final appTheme = getIt<AppThemeController>();
+    return ListenableBuilder(
+      listenable: Listenable.merge([appLocale, appTheme]),
+      builder: (context, _) {
+        return MaterialApp.router(
+          title: 'Family Games',
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: appLocale.materialAppLocale,
+          localeResolutionCallback: App._resolveDeviceLocale,
+          theme: familyLightTheme(),
+          darkTheme: familyDarkTheme(),
+          themeMode: appTheme.themeMode,
+          routerConfig: router,
+          builder: (context, child) {
+            if (_biometricLockActive) {
+              return PopScope(
+                canPop: false,
+                child: _BiometricLockScreen(onUnlocked: _clearBiometricLock),
+              );
+            }
+            return child ?? const SizedBox.shrink();
+          },
+        );
+      },
     );
   }
 }
@@ -200,7 +176,7 @@ class _BiometricLockScreenState extends State<_BiometricLockScreen> {
 
   Future<void> _attemptUnlock() async {
     if (!mounted) return;
-    if (authRepository.currentSession == null) {
+    if (!getIt<AuthRepository>().hasSession) {
       widget.onUnlocked();
       return;
     }
@@ -208,7 +184,7 @@ class _BiometricLockScreenState extends State<_BiometricLockScreen> {
     _unlockInFlight = true;
     setState(() => _busy = true);
     try {
-      final bio = AppControllers.of(context).biometric;
+      final bio = getIt<AppBiometricUnlockController>();
       await bio.refreshAuthenticatorAvailability();
       if (!mounted) return;
       if (!bio.enabled || !bio.authenticatorAvailable) {
@@ -216,13 +192,16 @@ class _BiometricLockScreenState extends State<_BiometricLockScreen> {
         return;
       }
       final l10n = AppLocalizations.of(context);
-      final ok = await bio.localAuth.authenticate(
-        localizedReason: l10n.settingsBiometricResumeReason,
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
-      );
+      final ok = await bio.localAuth
+          .authenticate(
+            localizedReason: l10n.settingsBiometricResumeReason,
+            biometricOnly: true,
+            persistAcrossBackgrounding: true,
+          )
+          .catchError(
+            (Object _) => false,
+            test: (e) => e is LocalAuthException,
+          );
       if (!mounted) return;
       if (ok) widget.onUnlocked();
     } finally {
@@ -245,7 +224,11 @@ class _BiometricLockScreenState extends State<_BiometricLockScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_outline_rounded, size: 56, color: scheme.primary),
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 56,
+                  color: scheme.primary,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   l10n.biometricLockTitle,

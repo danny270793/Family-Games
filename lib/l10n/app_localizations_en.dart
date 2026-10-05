@@ -10,7 +10,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Family\'s Game';
+  String get appTitle => 'Family Games';
 
   @override
   String get signIn => 'Sign in';
@@ -155,6 +155,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAboutSection => 'About';
 
   @override
+  String get settingsRateApp => 'Rate on Google Play';
+
+  @override
   String get settingsAboutApp => 'About';
 
   @override
@@ -202,14 +205,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTermsAcceptanceBody =>
-      'By accessing or using Family\'s Game, you agree to these terms. If you do not agree, do not use the app. Sign-in is handled by Supabase.';
+      'By accessing or using Family Games, you agree to these terms. If you do not agree, do not use the app. Sign-in is handled by Supabase.';
 
   @override
   String get settingsTermsDisclaimerTitle => 'Not professional advice';
 
   @override
   String get settingsTermsDisclaimerBody =>
-      'Family\'s Game is a personal app. Nothing in the app or these terms is legal advice. You use the app at your own risk.';
+      'Family Games is a personal app. Nothing in the app or these terms is legal advice. You use the app at your own risk.';
 
   @override
   String get settingsTermsLiabilityTitle => 'Limitation of liability';
@@ -333,11 +336,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPlayer => 'Add player';
 
   @override
-  String get playerHelp =>
-      'Use the email they use to sign in to Family\'s Game.';
+  String get playerHelp => 'Use the email they use to sign in to Family Games.';
 
   @override
-  String get playerNotFound => 'No Family\'s Game account uses that email.';
+  String get playerNotFound => 'No Family Games account uses that email.';
 
   @override
   String get playerAlreadyAdded => 'That player is already in this game.';

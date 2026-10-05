@@ -1,8 +1,9 @@
 import 'package:family_games/l10n/app_localizations.dart';
-import 'package:family_games/widgets/app_logo.dart';
-import 'package:family_games/widgets/developer_info_section.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
+import '../widgets/app_logo.dart';
+import '../widgets/developer_info_section.dart';
 
 enum LegalInfoKind { about, privacy, terms }
 

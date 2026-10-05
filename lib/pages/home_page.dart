@@ -1,60 +1,61 @@
-import 'package:family_games/core/auth/auth_repository.dart';
-import 'package:family_games/data/games_repository.dart';
 import 'package:family_games/l10n/app_localizations.dart';
-import 'package:family_games/models/family_game.dart';
-import 'package:family_games/pages/game_form_sheet.dart';
-import 'package:family_games/theme/family_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-class HomePage extends StatefulWidget {
+import '../core/di/injection.dart';
+import '../core/theme/family_theme.dart';
+import '../features/auth/domain/usecases/get_current_user_usecase.dart';
+import '../features/games/domain/entities/family_game.dart';
+import '../features/games/presentation/cubit/games_cubit.dart';
+import '../features/games/presentation/cubit/games_state.dart';
+import '../widgets/game_form_sheet.dart';
+
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<GamesCubit>()..load(),
+      child: const _HomeView(),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
-  List<FamilyGame> _games = [];
-  bool _loading = true;
-  bool _failed = false;
+class _HomeView extends StatelessWidget {
+  const _HomeView();
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final games = await gamesRepository.listGames();
-      if (!mounted) return;
-      setState(() {
-        _games = games;
-        _loading = false;
-        _failed = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _failed = true;
-      });
-    }
-  }
-
-  Future<void> _create() async {
+  Future<void> _create(BuildContext context) async {
+    final cubit = context.read<GamesCubit>();
     await showGameFormSheet(context);
-    if (!mounted) return;
-    await _load();
+    await cubit.load();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    return BlocBuilder<GamesCubit, GamesState>(
+      builder: (context, state) => _buildScaffold(context, l10n, state),
+    );
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    AppLocalizations l10n,
+    GamesState state,
+  ) {
+    final cubit = context.read<GamesCubit>();
+    final games = switch (state) {
+      GamesLoaded(:final games) => games,
+      GamesError(:final games) => games,
+      _ => const <FamilyGame>[],
+    };
+    final loading = state is GamesLoading || state is GamesInitial;
+    final failed = state is GamesError;
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: cubit.load,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -68,20 +69,20 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            if (_loading && _games.isEmpty)
+            if (loading && games.isEmpty)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (_failed && _games.isEmpty)
+            else if (failed && games.isEmpty)
               SliverFillRemaining(
                 child: _Message(
                   icon: Icons.cloud_off_rounded,
                   title: l10n.unexpectedError,
                   action: l10n.retry,
-                  onAction: _load,
+                  onAction: cubit.load,
                 ),
               )
-            else if (_games.isEmpty)
+            else if (games.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: _Message(
@@ -94,15 +95,15 @@ class _HomePageState extends State<HomePage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
                 sliver: SliverList.separated(
-                  itemCount: _games.length,
+                  itemCount: games.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final game = _games[index];
+                    final game = games[index];
                     return _GameCard(
                       game: game,
                       onTap: () async {
                         await context.push('/games/${game.id}');
-                        if (mounted) await _load();
+                        await cubit.load();
                       },
                     );
                   },
@@ -112,7 +113,7 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
+        onPressed: () => _create(context),
         icon: const Icon(Icons.add_rounded),
         label: Text(l10n.newGame),
       ),
@@ -130,7 +131,7 @@ class _GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final userId = authRepository.currentUser?.id;
+    final userId = getIt<GetCurrentUserUsecase>()()?.id;
     final mine = game.standings.where((row) => row.userId == userId);
     final record = mine.isEmpty ? null : mine.first;
     return Card(
@@ -212,7 +213,9 @@ class _TypeChip extends StatelessWidget {
       child: Text(
         gameTypeLabel(l10n, type),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: wonders ? scheme.onPrimaryContainer : scheme.onSecondaryContainer,
+          color: wonders
+              ? scheme.onPrimaryContainer
+              : scheme.onSecondaryContainer,
           fontWeight: FontWeight.w700,
         ),
       ),
