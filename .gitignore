@@ -48,6 +48,13 @@ app.*.map.json
 .widget_preview/
 
 # Supabase compile-time credentials
-.env.json
 
 assets/certs/*.pem
+
+# Supabase credentials. Never commit them; copy .env.example.json instead.
+.env
+.env.json
+.env.local
+.env.*.local
+# Migrations live in danny270793/supabase, the source of truth for the schema.
+/supabase/

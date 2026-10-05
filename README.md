@@ -13,4 +13,11 @@ Build with `./scripts/build.sh --platform android|ios --mode debug|release`.
 
 ## Database
 
-Family Games shares one Supabase project with Wallet, Habit Tracker, and Hangman. Its `fg_*` tables and RPCs live in [danny270793/supabase](https://github.com/danny270793/supabase). Create and apply migrations there, not in this repo.
+This repo has the app only. The `fg_*` schema lives in [danny270793/supabase](https://github.com/danny270793/supabase), the source of truth for migrations. Family Games shares that Supabase project with the other apps. To change the database you need both repos:
+
+```sh
+git clone git@github.com:danny270793/Family-Games.git
+git clone git@github.com:danny270793/supabase.git
+```
+
+Create, test, and push migrations from the `supabase` repo. This repo ignores any `supabase/` folder, and `.env.json` holds the project credentials, so never commit it.
