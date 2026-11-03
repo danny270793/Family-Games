@@ -782,6 +782,12 @@ abstract class AppLocalizations {
   /// **'Date'**
   String get matchDate;
 
+  /// No description provided for @matchTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get matchTime;
+
   /// No description provided for @statistics.
   ///
   /// In en, this message translates to:

@@ -134,6 +134,7 @@
   "deleteMatch": "Delete match",
   "deleteMatchBody": "This removes the scores for this match.",
   "matchDate": "Date",
+  "matchTime": "Time",
   "statistics": "Statistics",
   "dateFrom": "From",
   "dateTo": "To",

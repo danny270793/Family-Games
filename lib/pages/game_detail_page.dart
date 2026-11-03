@@ -132,6 +132,7 @@ class _MatchTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final date = DateFormat.yMMMd(Localizations.localeOf(context).toString())
+        .add_jm()
         .format(match.playedAt);
     final ranked = [...match.results]
       ..sort((a, b) => b.points.compareTo(a.points));

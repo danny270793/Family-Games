@@ -123,7 +123,33 @@ class _MatchViewState extends State<_MatchView> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _playedAt = picked);
+    if (picked == null) return;
+    setState(() {
+      _playedAt = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _playedAt.hour,
+        _playedAt.minute,
+      );
+    });
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_playedAt),
+    );
+    if (picked == null) return;
+    setState(() {
+      _playedAt = DateTime(
+        _playedAt.year,
+        _playedAt.month,
+        _playedAt.day,
+        picked.hour,
+        picked.minute,
+      );
+    });
   }
 
   Future<void> _save() async {
@@ -221,9 +247,9 @@ class _MatchViewState extends State<_MatchView> {
         ),
     ];
     final results = scoreResults(lines);
-    final dateLabel = DateFormat.yMMMd(
-      Localizations.localeOf(context).toString(),
-    ).format(_playedAt);
+    final locale = Localizations.localeOf(context).toString();
+    final dateLabel = DateFormat.yMMMd(locale).format(_playedAt);
+    final timeLabel = DateFormat.jm(locale).format(_playedAt);
 
     return Scaffold(
       appBar: AppBar(
@@ -247,6 +273,14 @@ class _MatchViewState extends State<_MatchView> {
             subtitle: Text(dateLabel),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: _saving ? null : _pickDate,
+          ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            leading: const Icon(Icons.schedule_rounded),
+            title: Text(l10n.matchTime),
+            subtitle: Text(timeLabel),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: _saving ? null : _pickTime,
           ),
           if (results.isNotEmpty) ...[
             const SizedBox(height: 8),

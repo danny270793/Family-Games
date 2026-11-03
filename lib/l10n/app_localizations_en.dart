@@ -393,6 +393,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get matchDate => 'Date';
 
   @override
+  String get matchTime => 'Time';
+
+  @override
   String get statistics => 'Statistics';
 
   @override
