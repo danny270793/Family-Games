@@ -394,6 +394,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get matchDate => 'Fecha';
 
   @override
+  String get matchTime => 'Hora';
+
+  @override
   String get statistics => 'Estadísticas';
 
   @override

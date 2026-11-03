@@ -114,6 +114,7 @@
   "deleteMatch": "Eliminar partida",
   "deleteMatchBody": "Esto elimina los puntajes de esta partida.",
   "matchDate": "Fecha",
+  "matchTime": "Hora",
   "statistics": "Estadísticas",
   "dateFrom": "Desde",
   "dateTo": "Hasta",

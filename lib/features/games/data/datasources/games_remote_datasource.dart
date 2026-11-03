@@ -134,7 +134,7 @@ class GamesSupabaseDatasource implements GamesRemoteDatasource {
         params: {
           'p_match_id': matchId,
           'p_game_id': gameId,
-          'p_played_at': _dateOnly(playedAt),
+          'p_played_at': _dateTime(playedAt),
           'p_scores': [for (final score in scores) score.toJson()],
         },
       ),
@@ -177,9 +177,12 @@ class GamesSupabaseDatasource implements GamesRemoteDatasource {
     return 'unexpected';
   }
 
-  String _dateOnly(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
+  /// Local wall-clock `yyyy-MM-ddTHH:mm:ss` (no offset), matching the
+  /// `timestamp without time zone` column.
+  String _dateTime(DateTime value) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${value.year.toString().padLeft(4, '0')}-${two(value.month)}-'
+        '${two(value.day)}T${two(value.hour)}:${two(value.minute)}:'
+        '${two(value.second)}';
   }
 }
