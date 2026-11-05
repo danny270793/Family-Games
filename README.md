@@ -9,7 +9,7 @@ cp .env.example.json .env.json   # then fill in SUPABASE_URL / SUPABASE_ANON_KEY
 ./scripts/start.sh
 ```
 
-Build with `./scripts/build.sh --platform android|ios --mode debug|release`.
+Build with `./scripts/build.sh --platform android|ios --mode debug|release`. On Android, `--bundle apk|appbundle` picks the output (`apk` by default).
 
 ## Database
 
