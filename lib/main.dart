@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:family_games/l10n/app_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,6 +45,14 @@ Future<void> main() async {
       'Missing SUPABASE_URL or SUPABASE_ANON_KEY. '
       'Run with --dart-define-from-file=.env.json',
     );
+  }
+
+  // Only Android has a Firebase config (android/app/google-services.json);
+  // add ios/Runner/GoogleService-Info.plist before enabling it on iOS.
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    AppLogger.info('initializing Firebase');
+    await Firebase.initializeApp();
+    AppLogger.info('Firebase initialized');
   }
 
   AppLogger.info('initializing Supabase');
