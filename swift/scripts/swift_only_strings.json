@@ -1,0 +1,22 @@
+{
+  "configMissingTitle": {
+    "en": "Family Games isn't configured",
+    "es": "Family Games no está configurado"
+  },
+  "configMissingBody": {
+    "en": "Copy FamilyConfig.example.plist to FamilyGames/Resources/FamilyConfig.plist and fill in the Supabase URL and anon key.",
+    "es": "Copia FamilyConfig.example.plist a FamilyGames/Resources/FamilyConfig.plist y completa la URL y la clave anónima de Supabase."
+  },
+  "signInFailed": {
+    "en": "Couldn't sign in. Check your email and password.",
+    "es": "No se pudo iniciar sesión. Revisa el correo y la contraseña."
+  },
+  "rateApp": {
+    "en": "Rate the app",
+    "es": "Calificar la app"
+  },
+  "ok": {
+    "en": "OK",
+    "es": "OK"
+  }
+}
